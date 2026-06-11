@@ -24,7 +24,6 @@ function M.open(cmd)
     terms[name] = require('toggleterm.terminal').Terminal:new({
       direction = tall and 'horizontal' or 'vertical',
       cmd = cmd,
-      size = tall and math.floor(ui.height * 0.4) or math.floor(ui.width * 0.45),
     })
   end
 

@@ -47,7 +47,7 @@ vim.keymap.set('n',          '<leader>gg',  function() Q.open('lazygit') end)
 ## 特性
 
 - **持久化** — toggle 显隐，终端状态保留
-- **自适应** — 横屏右侧 45%，竖屏下方 40%
+- **自适应** — 横屏右侧分屏，竖屏下方分屏（toggleterm 默认尺寸）
 - **轻量** — 仅依赖 toggleterm.nvim，无其他依赖
 
 ## TODO
