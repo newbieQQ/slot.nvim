@@ -48,7 +48,7 @@ function M.open(cmd)
     opts.size = sz
   end
 
-  if not terms[name] or not terms[name]:is_open() then
+  if not terms[name] then
     terms[name] = require('toggleterm.terminal').Terminal:new(opts)
   end
 
