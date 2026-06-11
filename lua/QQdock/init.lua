@@ -50,14 +50,14 @@ function M.open(cmd)
   end
 
   if not terms[name] then
-    local extra = {}
-    -- 只在普通 shell 绑 Esc → normal，Reasonix/lazygit 等 TUI 程序保留原生 <C-\><C-n>
-    if name == '__shell__' then
-      extra.on_open = function(term)
-        vim.keymap.set('t', '<Esc>', '<C-\\><C-n>', { buffer = term.bufnr, noremap = true })
-      end
-    end
-    terms[name] = require('toggleterm.terminal').Terminal:new(vim.tbl_extend('force', opts, extra))
+    local cmd_saved = cmd
+    terms[name] = require('toggleterm.terminal').Terminal:new(vim.tbl_extend('force', opts, {
+      on_open = function(term)
+        vim.keymap.set('t', '<C-\\><C-\\>', function()
+          M.open(cmd_saved)
+        end, { buffer = term.bufnr, noremap = true })
+      end,
+    }))
   end
 
   terms[name]:toggle()
