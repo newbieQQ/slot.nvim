@@ -1,33 +1,61 @@
-# nvim-plugin-template
+# QQdock.nvim
 
-Neovim plugin template; includes automatic documentation generation from README, integration tests with Busted, and linting with Stylua
+持久化自适应浮动终端管理器。
 
-## Usage
+每次按 `<c-t>` 打开 shell，聊完 Reasonix 按 `<C-i>` 隐藏，再按回来——对话还在。横屏自动右侧分屏，竖屏自动下方分屏。
 
-1. Click `use this template` button generate a repo on your github.
-2. Clone your plugin repo. Open terminal then cd plugin directory.
-3. Run `python3 rename.py your-plugin-name`. This will replace all `nvim-plugin-template` to your `plugin-name`. 
-   Then it will prompt you input `y` or `n` to remove example codes in `init.lua` and
-   `test/plugin_spec.lua`. If you are familiar this repo just input `y`. If you are looking at this template for the first time I suggest you inspect the contents. After this step `rename.py` will also auto-remove.
+## 安装
 
-Now you have a clean plugin environment. Enjoy!
+```lua
+-- lazy.nvim
+{
+  'newbie/QQdock.nvim',
+  dependencies = { 'akinsho/toggleterm.nvim' },
+  config = function()
+    -- QQdock 无全局配置，直接用
+  end,
+}
+```
 
-## Format
+## 用法
 
-The CI uses `stylua` to format the code; customize the formatting by editing `.stylua.toml`.
+```lua
+local Q = require('QQdock')
 
-## Test
+Q.shell()                -- 普通 shell
+Q.open('reasonix')       -- Reasonix AI agent
+Q.open('lazygit')        -- lazygit
+Q.open('btm')            -- 系统监控
+Q.open('yazi')           -- 文件管理器
+```
 
-See [Running tests locally](https://github.com/nvim-neorocks/nvim-busted-action?tab=readme-ov-file#running-tests-locally)
+## 推荐键位
 
-## CI
+```lua
+vim.keymap.set({ 'n', 'i' }, '<c-t>',      Q.shell, { noremap = true })
+vim.keymap.set('n',          '<C-i>',       function() Q.open('reasonix') end)
+vim.keymap.set('n',          '<leader>gg',  function() Q.open('lazygit') end)
+```
 
-- Auto generates doc from README.
-- Runs the [nvim-busted-action](https://github.com/nvim-neorocks/nvim-busted-action) for test.
-- Lints with `stylua`.
+## API
 
-## More
+| 函数 | 参数 | 作用 |
+|------|------|------|
+| `Q.shell()` | — | 打开/关闭持久 shell |
+| `Q.open(cmd)` | cmd | 打开/关闭指定命令的持久终端 |
 
-To see this template in action, take a look at my other plugins.
+## 特性
 
-## License MIT
+- **持久化** — toggle 显隐，终端状态保留
+- **自适应** — 横屏右侧 45%，竖屏下方 40%
+- **轻量** — 仅依赖 toggleterm.nvim，无其他依赖
+
+## TODO
+
+- [ ] 翻译（trans）
+- [ ] 系统监控（btop）
+- [ ] 文件管理器（yazi）
+
+## 协议
+
+MIT
