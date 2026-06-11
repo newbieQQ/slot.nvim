@@ -8,6 +8,12 @@
 --       horizontal = 10,  -- 竖屏下方终端高度（行数）
 --       vertical = 40,    -- 横屏右侧终端宽度（列数）
 --     },
+--     keymaps = {
+--       shell    = { 'n', '<c-t>'        },  -- 普通终端
+--       shell_i  = { 'i', '<c-t>'        },  -- 插入模式也开终端
+--       reasonix = { 'n', '<C-i>'        },  -- Reasonix
+--       lazygit  = { 'n', '<leader>gg'   },  -- lazygit
+--     },
 --   })
 --
 -- 用法：
@@ -23,13 +29,36 @@ local config = {
     horizontal = nil,  -- nil = toggleterm 默认值
     vertical = nil,
   },
+  keymaps = {},
+  commands = {
+    reasonix = 'reasonix',
+    lazygit  = 'lazygit',
+  },
 }
 
 local terms = {}  -- 缓存终端实例，key 是命令名（nil = 普通 shell）
 
----@param opts { size?: { horizontal?: integer, vertical?: integer } }
+---@param opts { size?: { horizontal?: integer, vertical?: integer }, keymaps?: table, commands?: table }
 function M.setup(opts)
   config = vim.tbl_deep_extend('force', config, opts or {})
+
+  -- 注册键位
+  local km = config.keymaps
+  local function safe_map(mode, lhs, fn)
+    if mode and lhs and fn then
+      vim.keymap.set(mode, lhs, fn, { noremap = true })
+    end
+  end
+  if km.shell    then safe_map(km.shell[1],    km.shell[2],    M.shell) end
+  if km.shell_i  then safe_map(km.shell_i[1],  km.shell_i[2],  M.shell) end
+  if km.reasonix then safe_map(km.reasonix[1], km.reasonix[2], function()
+    local cmd = config.commands.reasonix
+    M.open(type(cmd) == 'function' and cmd() or cmd)
+  end) end
+  if km.lazygit  then safe_map(km.lazygit[1],  km.lazygit[2],  function()
+    local cmd = config.commands.lazygit
+    M.open(type(cmd) == 'function' and cmd() or cmd)
+  end) end
 end
 
 function M.open(cmd)
