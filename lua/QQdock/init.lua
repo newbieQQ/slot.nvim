@@ -42,6 +42,7 @@ function M.open(cmd)
   local opts = {
     direction = tall and 'horizontal' or 'vertical',
     cmd = cmd,
+    hidden = true,  -- 隐藏时进程继续跑，toggle() 只切显隐
   }
   local sz = tall and config.size.horizontal or config.size.vertical
   if sz then
