@@ -50,7 +50,11 @@ function M.open(cmd)
   end
 
   if not terms[name] then
-    terms[name] = require('toggleterm.terminal').Terminal:new(opts)
+    terms[name] = require('toggleterm.terminal').Terminal:new(vim.tbl_extend('force', opts, {
+      on_open = function(term)
+        vim.keymap.set('t', '<Esc>', '<C-\\><C-n>', { buffer = term.bufnr, noremap = true })
+      end,
+    }))
   end
 
   terms[name]:toggle()
