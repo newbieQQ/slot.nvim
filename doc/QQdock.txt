@@ -1,0 +1,151 @@
+*QQdock.nvim.txt*	Persistent Adaptive Terminal Dock
+
+Author: newbie <https://git.qyhhh.top/newbie/QQdock.nvim>
+License: MIT
+
+
+==============================================================================
+CONTENTS                                                        *QQdock-contents*
+
+  1. Introduction .............................. |QQdock-intro|
+  2. Installation .............................. |QQdock-install|
+  3. Configuration ............................. |QQdock-config|
+  4. Usage ..................................... |QQdock-usage|
+  5. API ....................................... |QQdock-api|
+  6. Layout Logic .............................. |QQdock-layout|
+  7. Keymaps ................................... |QQdock-keymaps|
+
+==============================================================================
+INTRODUCTION                                                    *QQdock-intro*
+
+QQdock.nvim is a zero-dependency, persistent terminal dock for Neovim. It uses
+Neovim's native `vim.fn.termopen()` — no external plugins required.
+
+Key features:
+
+- **Persistent** — toggle hide/show, terminal process keeps running.
+- **Adaptive split** — vertical vsplit on wide screens, horizontal split on
+  tall screens; based on the current window, not the tabpage.
+- **Main window mode** — when no file is open, the terminal occupies the
+  current window directly instead of creating a split.
+- **Dynamic commands** — add new tools with two lines of config; keymaps are
+  auto-registered from `commands` and `keymaps` tables.
+- **Single file** — ~220 lines of Lua.
+
+==============================================================================
+INSTALLATION                                                  *QQdock-install*
+
+Using lazy.nvim >~
+    {
+      'newbie/QQdock.nvim',
+      url = 'https://github.com/newbie/QQdock.nvim',
+      config = function()
+        require('QQdock').setup({})
+      end,
+    }
+
+No dependencies required.
+
+==============================================================================
+CONFIGURATION                                                  *QQdock-config*
+
+QQdock.setup({opts}) accepts the following options:
+
+    require('QQdock').setup({
+      size = {
+        horizontal = nil,   -- terminal height in rows (nil = auto)
+        vertical   = nil,   -- terminal width in columns (nil = auto)
+      },
+      commands = {
+        reasonix = 'reasonix',
+        lazygit  = 'lazygit',
+        -- key = command name, value = shell command or function
+      },
+      keymaps = {
+        shell    = { 'n', '<c-t>'        },
+        shell_i  = { 'i', '<c-t>'        },
+        reasonix = { 'n', '<C-i>'        },
+        lazygit  = { 'n', '<leader>gg'   },
+        -- key = must match a key in `commands`, value = {mode, lhs}
+      },
+      debug = false,   -- log layout decisions to :messages
+    })
+
+`commands` values can be strings or functions (lazy evaluation).
+
+If `keymaps` is empty or omitted, no keymaps are registered. You can bind
+everything manually via the API.
+
+==============================================================================
+USAGE                                                          *QQdock-usage*
+
+                                                                *QQdock.shell*
+QQdock.shell()~
+    Open/close a persistent plain shell. Equivalent to `QQdock.open(nil)`.
+
+                                                                *QQdock.open*
+QQdock.open({cmd})~
+    Open/close a persistent terminal running the given command. Each unique
+    {cmd} gets its own cached terminal instance.
+
+Examples: >
+    local Q = require('QQdock')
+    Q.shell()
+    Q.open('reasonix')
+    Q.open('lazygit')
+    Q.open('btop')
+    Q.open('yazi')
+
+Inside any terminal, press <C-\><C-\> (Ctrl+\\ twice) to hide it.
+The process keeps running in the background.
+
+==============================================================================
+API                                                              *QQdock-api*
+
+QQdock.setup({opts})                                    *QQdock.setup*
+    Configure and register keymaps. Call once, typically in your plugin
+    manager's `config` function.
+
+    Parameters: ~
+      {opts} (table)  Configuration table, see |QQdock-config|.
+
+QQdock.shell()                                          *QQdock.shell*
+    Toggle a plain shell terminal. Shortcut for `QQdock.open(nil)`.
+
+QQdock.open({cmd})                                      *QQdock.open*
+    Toggle a persistent terminal for the given command.
+
+    Parameters: ~
+      {cmd} (string|nil)  Shell command to run, or nil for default shell.
+
+==============================================================================
+LAYOUT LOGIC                                                  *QQdock-layout*
+
+The layout is determined automatically based on the current window dimensions:
+
+    Condition                            Result
+    -----------------------------------  -------------------------------
+    Empty unnamed buffer, not modified   Main window (no split)
+    width ≥ 110 and width > height × 2   Right vsplit, 40% width
+    Otherwise                             Bottom split, 35% height (min 10)
+
+Splits use `rightbelow`, meaning they open relative to the current window
+without disrupting the rest of the tabpage layout.
+
+Set `debug = true` to see layout decisions in `:messages`.
+
+==============================================================================
+KEYMAPS                                                        *QQdock-keymaps*
+
+                                                           *QQdock-ctrl-backslash*
+<C-\><C-\> (terminal mode)~
+    Hide the current terminal. Bound automatically in every QQdock terminal
+    buffer. Does not affect TUI programs that use Ctrl+\ for other purposes.
+
+Custom keymaps are defined in the `keymaps` table passed to |QQdock.setup|.
+Each entry is {mode, lhs}. Key names must match entries in `commands`.
+
+The `shell` and `shell_i` keys are special and are not driven by `commands`.
+
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:
