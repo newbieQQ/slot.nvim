@@ -110,18 +110,24 @@ function M.open(cmd)
 
   -- 已打开 → 关闭/隐藏，终端进程继续
   if term and term.winid and vim.api.nvim_win_is_valid(term.winid) then
-    if config.debug then
-      vim.notify('QQdock: hide [' .. name .. ']', vim.log.levels.INFO)
-    end
-    if term.borrowed then
-      -- 占了主窗口 → 换回原始空 buffer
-      vim.api.nvim_win_set_buf(term.winid, term.original_bufnr)
+    -- 窗口 buffer 已被替换（用户直接 :e 打开了文件）→ 当作已隐藏
+    if vim.api.nvim_win_get_buf(term.winid) ~= term.bufnr then
+      term.winid = nil
+      term.borrowed = nil
     else
-      vim.api.nvim_win_close(term.winid, true)
+      if config.debug then
+        vim.notify('QQdock: hide [' .. name .. ']', vim.log.levels.INFO)
+      end
+      if term.borrowed then
+        -- 占了主窗口 → 换回原始空 buffer
+        vim.api.nvim_win_set_buf(term.winid, term.original_bufnr)
+      else
+        vim.api.nvim_win_close(term.winid, true)
+      end
+      term.winid = nil
+      term.borrowed = nil
+      return
     end
-    term.winid = nil
-    term.borrowed = nil
-    return
   end
 
   -- 需要打开 → 基于当前窗口计算布局
