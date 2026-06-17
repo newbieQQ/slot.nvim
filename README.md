@@ -1,8 +1,8 @@
 # QQdock.nvim
 
-持久化自适应浮动终端管理器。
+持久化自适应终端 Dock — 无外部依赖，基于 Neovim 原生终端。
 
-每次按 `<c-t>` 打开 shell，聊完 Reasonix 按 `<C-i>` 隐藏，再按回来——对话还在。横屏自动右侧分屏，竖屏自动下方分屏。
+横屏自动右侧分屏，竖屏自动下方分屏。没打开文件时直接占用主窗口。`<C-\><C-\>` 隐藏，对话还在。
 
 ## 安装
 
@@ -10,76 +10,84 @@
 -- lazy.nvim
 {
   'newbie/QQdock.nvim',
-  url = 'https://git.qyhhh.top/newbie/QQdock.nvim',
-  dependencies = { 'akinsho/toggleterm.nvim' },
+  url = 'https://github.com/newbie/QQdock.nvim',
   config = function()
     require('QQdock').setup({
-      -- 可选：自定义尺寸
       size = {
-        horizontal = 10,
-        vertical = 40,
+        horizontal = 10,   -- 竖屏下方终端高度（行数，nil = 自动）
+        vertical   = 40,   -- 横屏右侧终端宽度（列数，nil = 自动）
       },
-      -- 可选：自定义快捷键（不传则无默认，需自己手动注册）
+      commands = {
+        reasonix = 'reasonix',
+        lazygit  = 'lazygit',
+      },
       keymaps = {
-        shell    = { 'n', '<c-t>'      },
-        shell_i  = { 'i', '<c-t>'      },
-        reasonix = { 'n', '<C-i>'      },
-        lazygit  = { 'n', '<leader>gg' },
+        shell    = { 'n', '<c-t>'        },
+        shell_i  = { 'i', '<c-t>'        },
+        reasonix = { 'n', '<C-i>'        },
+        lazygit  = { 'n', '<leader>gg'   },
       },
     })
   end,
 }
 ```
 
-## 自定义快捷键
+## 自定义命令 & 快捷键
 
-`keymaps` 表里的每个字段格式是 `{ mode, lhs }`。想换键就改，不想用某个功能就不传那个字段。例如只用 shell 和 lazygit，不要 Reasonix：
+添加新工具只需在 `commands` 和 `keymaps` 各加一行，键名一致即可：
 
 ```lua
 require('QQdock').setup({
+  commands = {
+    reasonix = 'reasonix',
+    lazygit  = 'lazygit',
+    codex    = 'codex',                     -- 新增工具
+    btop     = 'btop',
+  },
   keymaps = {
-    shell   = { 'n', '<c-t>'      },
-    shell_i = { 'i', '<c-t>'      },
-    lazygit = { 'n', '<leader>gg' },
-    -- reasonix 不写 → 不注册快捷键
+    shell    = { 'n', '<c-t>'        },
+    shell_i  = { 'i', '<c-t>'        },
+    reasonix = { 'n', '<C-i>'        },
+    lazygit  = { 'n', '<leader>gg'   },
+    codex    = { 'n', '<leader>cx'   },     -- 新增快捷键
+    btop     = { 'n', '<leader>bt'   },
   },
 })
 ```
 
-想用 `<leader>ft` 开终端：
+`commands` 的值也支持函数（lazy eval）：
 
 ```lua
-require('QQdock').setup({
-  keymaps = {
-    shell = { 'n', '<leader>ft' },
-    -- …
-  },
-})
+commands = {
+  reasonix = function()
+    return vim.fn.expand('$HOME') .. '/.local/bin/reasonix'
+  end,
+}
 ```
 
-**不传 `keymaps` 则不注册任何快捷键**，你可以完全手动绑定：
+不想用某个功能就不写对应字段。完全不传 `keymaps` 则不注册任何快捷键，可手动绑定：
 
 ```lua
 local Q = require('QQdock')
 vim.keymap.set('n', '<leader>s', Q.shell, { noremap = true })
 vim.keymap.set('n', '<leader>r', function() Q.open('reasonix') end)
+vim.keymap.set('n', '<leader>cx', function() Q.open('codex') end)
 ```
 
 ## 终端内隐藏键
 
-所有终端内按 **`<C-\><C-\>`**（双击 Ctrl+\）隐藏回代码，不影响 TUI 程序。
+所有终端内按 **`<C-\><C-\>`**（双击 Ctrl+\\）隐藏回代码，不影响 TUI 程序。
 
-## 用法
+## 分屏逻辑
 
-```lua
-local Q = require('QQdock')
+| 场景 | 行为 |
+|------|------|
+| 刚打开 Neovim，没加载文件 | 终端直接占用主窗口（不 split） |
+| 宽屏（≥110 列，宽度 > 高度×2） | 右侧 `vsplit`，宽度 40% |
+| 竖屏 / 普通窗口 | 下方 `split`，高度 35%（最低 10 行） |
+| 分屏基于**当前窗口**（rightbelow），不干扰其他窗口布局 | |
 
-Q.shell()                -- 普通 shell
-Q.open('reasonix')       -- Reasonix AI agent
-Q.open('lazygit')        -- lazygit
-Q.open('btm')            -- 系统监控
-Q.open('yazi')           -- 文件管理器
-```
+设置 `debug = true` 可在 `:messages` 里看到每次的布局决策。
 
 ## API
 
@@ -93,26 +101,20 @@ Q.open('yazi')           -- 文件管理器
 
 | 字段 | 类型 | 默认 | 说明 |
 |------|------|------|------|
-| `size.horizontal` | number | nil | 竖屏下方终端高度 |
-| `size.vertical` | number | nil | 横屏右侧终端宽度 |
-| `keymaps.shell` | { mode, key } | — | 普通终端快捷键 |
-| `keymaps.shell_i` | { mode, key } | — | 插入模式开终端 |
-| `keymaps.reasonix` | { mode, key } | — | Reasonix 快捷键 |
-| `keymaps.lazygit` | { mode, key } | — | lazygit 快捷键 |
-| `commands.reasonix` | string | `"reasonix"` | Reasonix 启动命令 |
-| `commands.lazygit` | string | `"lazygit"` | lazygit 启动命令 |
+| `size.horizontal` | number | nil | 竖屏下方终端高度（行数，nil = 自动） |
+| `size.vertical` | number | nil | 横屏右侧终端宽度（列数，nil = 自动） |
+| `commands` | table | `{reasonix, lazygit}` | 工具命令映射，key 匹配 keymaps |
+| `keymaps.shell` | {mode, key} | — | 普通终端快捷键 |
+| `keymaps.shell_i` | {mode, key} | — | 插入模式开终端 |
+| `keymaps.<name>` | {mode, key} | — | 对应 commands 里同名工具快捷键 |
+| `debug` | boolean | false | 开启布局调试日志 |
 
 ## 特性
 
-- **持久化** — toggle 显隐，终端状态保留
-- **自适应** — 横屏右侧分屏，竖屏下方分屏
-- **轻量** — 仅依赖 toggleterm.nvim
-
-## TODO
-
-- [ ] 翻译（trans）
-- [ ] 系统监控（btop）
-- [ ] 文件管理器（yazi）
+- **零外部依赖** — 基于 `vim.fn.termopen` 原生终端
+- **持久化** — toggle 显隐，终端进程不中断
+- **自适应布局** — 横屏右分、竖屏下分、无文件占主窗
+- **单文件** — `lua/QQdock/init.lua` ~220 行
 
 ## 协议
 
