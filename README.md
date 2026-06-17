@@ -1,6 +1,8 @@
-# QQdock.nvim
+# slot.nvim
 
 持久化自适应终端 Dock — 无外部依赖，基于 Neovim 原生终端。
+
+像电脑扩展槽一样：每个命令（shell、reasonix、lazygit、codex…）占用一个 slot，toggle 切换显隐，进程不中断。
 
 横屏自动右侧分屏，竖屏自动下方分屏。没打开文件时直接占用主窗口。`<C-\><C-\>` 隐藏，对话还在。
 
@@ -9,10 +11,10 @@
 ```lua
 -- lazy.nvim
 {
-  'newbie/QQdock.nvim',
-  url = 'https://github.com/newbie/QQdock.nvim',
+  'newbie/slot.nvim',
+  url = 'https://github.com/newbie/slot.nvim',
   config = function()
-    require('QQdock').setup({
+    require('slot').setup({
       size = {
         horizontal = 10,   -- 竖屏下方终端高度（行数，nil = 自动）
         vertical   = 40,   -- 横屏右侧终端宽度（列数，nil = 自动）
@@ -37,7 +39,7 @@
 添加新工具只需在 `commands` 和 `keymaps` 各加一行，键名一致即可：
 
 ```lua
-require('QQdock').setup({
+require('slot').setup({
   commands = {
     reasonix = 'reasonix',
     lazygit  = 'lazygit',
@@ -68,10 +70,10 @@ commands = {
 不想用某个功能就不写对应字段。完全不传 `keymaps` 则不注册任何快捷键，可手动绑定：
 
 ```lua
-local Q = require('QQdock')
-vim.keymap.set('n', '<leader>s', Q.shell, { noremap = true })
-vim.keymap.set('n', '<leader>r', function() Q.open('reasonix') end)
-vim.keymap.set('n', '<leader>cx', function() Q.open('codex') end)
+local S = require('slot')
+vim.keymap.set('n', '<leader>s', S.shell, { noremap = true })
+vim.keymap.set('n', '<leader>r', function() S.open('reasonix') end)
+vim.keymap.set('n', '<leader>cx', function() S.open('codex') end)
 ```
 
 ## 终端内隐藏键
@@ -93,9 +95,9 @@ vim.keymap.set('n', '<leader>cx', function() Q.open('codex') end)
 
 | 函数 | 参数 | 作用 |
 |------|------|------|
-| `Q.setup(opts)` | opts | 配置尺寸、快捷键、命令映射 |
-| `Q.shell()` | — | 打开/关闭持久 shell |
-| `Q.open(cmd)` | cmd | 打开/关闭指定命令的持久终端 |
+| `S.setup(opts)` | opts | 配置尺寸、快捷键、命令映射 |
+| `S.shell()` | — | 打开/关闭持久 shell |
+| `S.open(cmd)` | cmd | 打开/关闭指定命令的持久终端 |
 
 ### setup 参数
 
@@ -114,7 +116,7 @@ vim.keymap.set('n', '<leader>cx', function() Q.open('codex') end)
 - **零外部依赖** — 基于 `vim.fn.termopen` 原生终端
 - **持久化** — toggle 显隐，终端进程不中断
 - **自适应布局** — 横屏右分、竖屏下分、无文件占主窗
-- **单文件** — `lua/QQdock/init.lua` ~220 行
+- **单文件** — `lua/slot/init.lua` ~220 行
 
 ## 协议
 

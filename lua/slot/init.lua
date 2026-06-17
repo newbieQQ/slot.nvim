@@ -1,9 +1,9 @@
--- QQdock.nvim — Persistent adaptive terminal dock
+-- slot.nvim — Persistent adaptive terminal dock
 --
 -- 特性：持久化终端实例、自适应窗口方向（横屏右分屏/竖屏下分屏）、基于 Neovim 原生终端
 --
 -- 配置（可选）：
---   require('QQdock').setup({
+--   require('slot').setup({
 --     size = {
 --       horizontal = 10,  -- 竖屏下方终端高度（行数）
 --       vertical = 40,    -- 横屏右侧终端宽度（列数）
@@ -23,7 +23,7 @@
 --   })
 --
 -- 用法：
---   local Q = require('QQdock')
+--   local Q = require('slot')
 --   Q.shell()                -- 打开/关闭普通 shell
 --   Q.open('reasonix')       -- 打开/关闭 Reasonix
 --   Q.open('lazygit')        -- 打开/关闭 lazygit
@@ -43,7 +43,7 @@ local config = {
   debug = false,
 }
 
----@class QdockTerm
+---@class SlotTerm
 ---@field bufnr          integer
 ---@field winid          integer?
 ---@field job_id         integer
@@ -51,7 +51,7 @@ local config = {
 ---@field borrowed       boolean?
 ---@field original_bufnr integer?
 
----@type table<string, QdockTerm>
+---@type table<string, SlotTerm>>
 local terms = {} -- 缓存终端实例，key 是命令名（nil = 普通 shell  → '__shell__'）
 
 --- 基于当前窗口宽高返回 { direction, size }
@@ -118,7 +118,7 @@ function M.open(cmd)
       term.borrowed = nil
     else
       if config.debug then
-        vim.notify('QQdock: hide [' .. name .. ']', vim.log.levels.INFO)
+        vim.notify('slot: hide [' .. name .. ']', vim.log.levels.INFO)
       end
       if term.borrowed then
         -- 占了主窗口 → 换回原始空 buffer（如果还在的话，否则关窗）
@@ -150,7 +150,7 @@ function M.open(cmd)
     local height = vim.api.nvim_win_get_height(0)
     local mode = use_main and 'main' or direction
     vim.notify(
-      string.format('QQdock: %dx%d → %s %d [%s]', width, height, mode, size, name),
+      string.format('slot: %dx%d → %s %d [%s]', width, height, mode, size, name),
       vim.log.levels.INFO
     )
   end

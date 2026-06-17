@@ -1,25 +1,29 @@
-*QQdock.nvim.txt*	Persistent Adaptive Terminal Dock
+*slot.nvim.txt*	Persistent Adaptive Terminal Dock
 
-Author: newbie <https://git.qyhhh.top/newbie/QQdock.nvim>
+Author: newbie <https://github.com/newbie/slot.nvim>
 License: MIT
 
 
 ==============================================================================
-CONTENTS                                                        *QQdock-contents*
+CONTENTS                                                        *slot-contents*
 
-  1. Introduction .............................. |QQdock-intro|
-  2. Installation .............................. |QQdock-install|
-  3. Configuration ............................. |QQdock-config|
-  4. Usage ..................................... |QQdock-usage|
-  5. API ....................................... |QQdock-api|
-  6. Layout Logic .............................. |QQdock-layout|
-  7. Keymaps ................................... |QQdock-keymaps|
+  1. Introduction .............................. |slot-intro|
+  2. Installation .............................. |slot-install|
+  3. Configuration ............................. |slot-config|
+  4. Usage ..................................... |slot-usage|
+  5. API ....................................... |slot-api|
+  6. Layout Logic .............................. |slot-layout|
+  7. Keymaps ................................... |slot-keymaps|
 
 ==============================================================================
-INTRODUCTION                                                    *QQdock-intro*
+INTRODUCTION                                                    *slot-intro*
 
-QQdock.nvim is a zero-dependency, persistent terminal dock for Neovim. It uses
+slot.nvim is a zero-dependency, persistent terminal dock for Neovim. It uses
 Neovim's native `vim.fn.termopen()` — no external plugins required.
+
+Think of it like expansion slots in a computer: each command (shell, reasonix,
+lazygit, codex, btop, …) gets its own dedicated slot. Toggle a slot to bring
+its terminal panel in/out of view; the process keeps running in the background.
 
 Key features:
 
@@ -33,25 +37,25 @@ Key features:
 - **Single file** — ~220 lines of Lua.
 
 ==============================================================================
-INSTALLATION                                                  *QQdock-install*
+INSTALLATION                                                  *slot-install*
 
 Using lazy.nvim >~
     {
-      'newbie/QQdock.nvim',
-      url = 'https://github.com/newbie/QQdock.nvim',
+      'newbie/slot.nvim',
+      url = 'https://github.com/newbie/slot.nvim',
       config = function()
-        require('QQdock').setup({})
+        require('slot').setup({})
       end,
     }
 
 No dependencies required.
 
 ==============================================================================
-CONFIGURATION                                                  *QQdock-config*
+CONFIGURATION                                                  *slot-config*
 
-QQdock.setup({opts}) accepts the following options:
+slot.setup({opts}) accepts the following options:
 
-    require('QQdock').setup({
+    require('slot').setup({
       size = {
         horizontal = nil,   -- terminal height in rows (nil = auto)
         vertical   = nil,   -- terminal width in columns (nil = auto)
@@ -77,49 +81,49 @@ If `keymaps` is empty or omitted, no keymaps are registered. You can bind
 everything manually via the API.
 
 ==============================================================================
-USAGE                                                          *QQdock-usage*
+USAGE                                                          *slot-usage*
 
-                                                                *QQdock.shell*
-QQdock.shell()~
-    Open/close a persistent plain shell. Equivalent to `QQdock.open(nil)`.
+                                                                *slot.shell*
+slot.shell()~
+    Open/close a persistent plain shell. Equivalent to `slot.open(nil)`.
 
-                                                                *QQdock.open*
-QQdock.open({cmd})~
+                                                                *slot.open*
+slot.open({cmd})~
     Open/close a persistent terminal running the given command. Each unique
     {cmd} gets its own cached terminal instance.
 
 Examples: >
-    local Q = require('QQdock')
-    Q.shell()
-    Q.open('reasonix')
-    Q.open('lazygit')
-    Q.open('btop')
-    Q.open('yazi')
+    local S = require('slot')
+    S.shell()
+    S.open('reasonix')
+    S.open('lazygit')
+    S.open('btop')
+    S.open('yazi')
 
 Inside any terminal, press <C-\><C-\> (Ctrl+\\ twice) to hide it.
 The process keeps running in the background.
 
 ==============================================================================
-API                                                              *QQdock-api*
+API                                                              *slot-api*
 
-QQdock.setup({opts})                                    *QQdock.setup*
+slot.setup({opts})                                    *slot.setup*
     Configure and register keymaps. Call once, typically in your plugin
     manager's `config` function.
 
     Parameters: ~
-      {opts} (table)  Configuration table, see |QQdock-config|.
+      {opts} (table)  Configuration table, see |slot-config|.
 
-QQdock.shell()                                          *QQdock.shell*
-    Toggle a plain shell terminal. Shortcut for `QQdock.open(nil)`.
+slot.shell()                                          *slot.shell*
+    Toggle a plain shell terminal. Shortcut for `slot.open(nil)`.
 
-QQdock.open({cmd})                                      *QQdock.open*
+slot.open({cmd})                                      *slot.open*
     Toggle a persistent terminal for the given command.
 
     Parameters: ~
       {cmd} (string|nil)  Shell command to run, or nil for default shell.
 
 ==============================================================================
-LAYOUT LOGIC                                                  *QQdock-layout*
+LAYOUT LOGIC                                                  *slot-layout*
 
 The layout is determined automatically based on the current window dimensions:
 
@@ -135,14 +139,14 @@ without disrupting the rest of the tabpage layout.
 Set `debug = true` to see layout decisions in `:messages`.
 
 ==============================================================================
-KEYMAPS                                                        *QQdock-keymaps*
+KEYMAPS                                                        *slot-keymaps*
 
-                                                           *QQdock-ctrl-backslash*
+                                                           *slot-ctrl-backslash*
 <C-\><C-\> (terminal mode)~
-    Hide the current terminal. Bound automatically in every QQdock terminal
+    Hide the current terminal. Bound automatically in every slot terminal
     buffer. Does not affect TUI programs that use Ctrl+\ for other purposes.
 
-Custom keymaps are defined in the `keymaps` table passed to |QQdock.setup|.
+Custom keymaps are defined in the `keymaps` table passed to |slot.setup|.
 Each entry is {mode, lhs}. Key names must match entries in `commands`.
 
 The `shell` and `shell_i` keys are special and are not driven by `commands`.
