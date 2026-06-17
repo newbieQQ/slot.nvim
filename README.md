@@ -11,8 +11,8 @@
 ```lua
 -- lazy.nvim
 {
-  'newbie/slot.nvim',
-  url = 'https://github.com/newbie/slot.nvim',
+  'newbieQQ/slot.nvim',
+  url = 'https://github.com/newbieQQ/slot.nvim',
   config = function()
     require('slot').setup({
       size = {

@@ -1,6 +1,6 @@
 *slot.nvim.txt*	Persistent Adaptive Terminal Dock
 
-Author: newbie <https://github.com/newbie/slot.nvim>
+Author: newbie <https://github.com/newbieQQ/slot.nvim>
 License: MIT
 
 
@@ -41,8 +41,8 @@ INSTALLATION                                                  *slot-install*
 
 Using lazy.nvim >~
     {
-      'newbie/slot.nvim',
-      url = 'https://github.com/newbie/slot.nvim',
+      'newbieQQ/slot.nvim',
+      url = 'https://github.com/newbieQQ/slot.nvim',
       config = function()
         require('slot').setup({})
       end,
@@ -83,11 +83,9 @@ everything manually via the API.
 ==============================================================================
 USAGE                                                          *slot-usage*
 
-                                                                *slot.shell*
 slot.shell()~
     Open/close a persistent plain shell. Equivalent to `slot.open(nil)`.
 
-                                                                *slot.open*
 slot.open({cmd})~
     Open/close a persistent terminal running the given command. Each unique
     {cmd} gets its own cached terminal instance.
