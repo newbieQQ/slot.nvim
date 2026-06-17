@@ -121,8 +121,12 @@ function M.open(cmd)
         vim.notify('QQdock: hide [' .. name .. ']', vim.log.levels.INFO)
       end
       if term.borrowed then
-        -- 占了主窗口 → 换回原始空 buffer
-        vim.api.nvim_win_set_buf(term.winid, term.original_bufnr)
+        -- 占了主窗口 → 换回原始空 buffer（如果还在的话，否则关窗）
+        if term.original_bufnr and vim.api.nvim_buf_is_valid(term.original_bufnr) then
+          vim.api.nvim_win_set_buf(term.winid, term.original_bufnr)
+        else
+          vim.api.nvim_win_close(term.winid, true)
+        end
       else
         vim.api.nvim_win_close(term.winid, true)
       end
