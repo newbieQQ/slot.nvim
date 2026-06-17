@@ -38,6 +38,24 @@ local config = {
 
 local terms = {}  -- 缓存终端实例，key 是命令名（nil = 普通 shell）
 
+--- 基于当前窗口宽高返回 { direction, size }
+---@return string direction  -- 'horizontal' | 'vertical'
+---@return integer size
+local function get_layout()
+  local width = vim.api.nvim_win_get_width(0)
+  local height = vim.api.nvim_win_get_height(0)
+
+  -- 足够宽且宽度大于高度 2 倍 -> 右侧分屏
+  if width >= 110 and width > height * 2 then
+    local size = config.size.vertical or math.floor(width * 0.4)
+    return 'vertical', size
+  end
+
+  -- 否则下方分屏
+  local size = config.size.horizontal or math.max(10, math.floor(height * 0.35))
+  return 'horizontal', size
+end
+
 ---@param opts { size?: { horizontal?: integer, vertical?: integer }, keymaps?: table, commands?: table }
 function M.setup(opts)
   config = vim.tbl_deep_extend('force', config, opts or {})
@@ -62,21 +80,15 @@ function M.setup(opts)
 end
 
 function M.open(cmd)
-  local ui = vim.api.nvim_list_uis()[1]
-  if not ui then
-    return
-  end
-  local tall = ui.height > ui.width
+  local direction, size = get_layout()
   local name = cmd or '__shell__'
   local opts = {
-    direction = tall and 'horizontal' or 'vertical',
+    direction = direction,
+    size = size,
     cmd = cmd,
-    hidden = true,  -- 隐藏时进程继续跑，toggle() 只切显隐
+    persist_size = false,  -- 不记忆旧尺寸，每次 toggle 使用最新值
+    hidden = true,         -- 隐藏时进程继续跑，toggle() 只切显隐
   }
-  local sz = tall and config.size.horizontal or config.size.vertical
-  if sz then
-    opts.size = sz
-  end
 
   if not terms[name] then
     local cmd_saved = cmd
@@ -89,7 +101,8 @@ function M.open(cmd)
     }))
   end
 
-  terms[name]:toggle()
+  -- 每次 toggle 传入最新方向/尺寸，确保分屏后重新计算
+  terms[name]:toggle(size, direction)
 end
 
 function M.shell()
