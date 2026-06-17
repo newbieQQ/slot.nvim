@@ -8,11 +8,17 @@
 --       horizontal = 10,  -- 竖屏下方终端高度（行数）
 --       vertical = 40,    -- 横屏右侧终端宽度（列数）
 --     },
+--     commands = {
+--       reasonix = 'reasonix',  -- 任何终端命令，key = 工具名
+--       lazygit  = 'lazygit',
+--       codex    = 'codex',     -- 新增工具只需加一行
+--     },
 --     keymaps = {
 --       shell    = { 'n', '<c-t>'        },  -- 普通终端
 --       shell_i  = { 'i', '<c-t>'        },  -- 插入模式也开终端
---       reasonix = { 'n', '<C-i>'        },  -- Reasonix
---       lazygit  = { 'n', '<leader>gg'   },  -- lazygit
+--       reasonix = { 'n', '<C-i>'        },  -- 键名必须匹配 commands 里的 key
+--       lazygit  = { 'n', '<leader>gg'   },
+--       codex    = { 'n', '<leader>cx'   },  -- 新增快捷键只需加一行
 --     },
 --   })
 --
@@ -88,17 +94,13 @@ function M.setup(opts)
   if km.shell_i then
     safe_map(km.shell_i[1], km.shell_i[2], M.shell)
   end
-  if km.reasonix then
-    safe_map(km.reasonix[1], km.reasonix[2], function()
-      local cmd = config.commands.reasonix
-      M.open(type(cmd) == 'function' and cmd() or cmd)
-    end)
-  end
-  if km.lazygit then
-    safe_map(km.lazygit[1], km.lazygit[2], function()
-      local cmd = config.commands.lazygit
-      M.open(type(cmd) == 'function' and cmd() or cmd)
-    end)
+  -- 注册工具命令键位（动态遍历 config.commands，添加新工具只需改 config）
+  for name, cmd in pairs(config.commands) do
+    if km[name] then
+      safe_map(km[name][1], km[name][2], function()
+        M.open(type(cmd) == 'function' and cmd() or cmd)
+      end)
+    end
   end
 end
 
