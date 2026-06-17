@@ -1,6 +1,6 @@
 -- QQdock.nvim — Persistent adaptive terminal dock
 --
--- 特性：持久化终端实例、自适应窗口方向（横屏右分屏/竖屏下分屏）、依赖 toggleterm.nvim
+-- 特性：持久化终端实例、自适应窗口方向（横屏右分屏/竖屏下分屏）、基于 Neovim 原生终端
 --
 -- 配置（可选）：
 --   require('QQdock').setup({
@@ -26,17 +26,25 @@ local M = {}
 
 local config = {
   size = {
-    horizontal = nil,  -- nil = toggleterm 默认值
-    vertical = nil,
+    horizontal = nil, -- nil = 基于当前窗口高度动态计算
+    vertical = nil, -- nil = 基于当前窗口宽度动态计算
   },
   keymaps = {},
   commands = {
     reasonix = 'reasonix',
-    lazygit  = 'lazygit',
+    lazygit = 'lazygit',
   },
+  debug = false,
 }
 
-local terms = {}  -- 缓存终端实例，key 是命令名（nil = 普通 shell）
+---@class QdockTerm
+---@field bufnr  integer
+---@field winid  integer?
+---@field job_id integer
+---@field cmd    string?
+
+---@type table<string, QdockTerm>
+local terms = {} -- 缓存终端实例，key 是命令名（nil = 普通 shell  → '__shell__'）
 
 --- 基于当前窗口宽高返回 { direction, size }
 ---@return string direction  -- 'horizontal' | 'vertical'
@@ -45,7 +53,7 @@ local function get_layout()
   local width = vim.api.nvim_win_get_width(0)
   local height = vim.api.nvim_win_get_height(0)
 
-  -- 足够宽且宽度大于高度 2 倍 -> 右侧分屏
+  -- 足够宽且宽度明显大于高度 → 右侧分屏
   if width >= 110 and width > height * 2 then
     local size = config.size.vertical or math.floor(width * 0.4)
     return 'vertical', size
@@ -56,9 +64,14 @@ local function get_layout()
   return 'horizontal', size
 end
 
----@param opts { size?: { horizontal?: integer, vertical?: integer }, keymaps?: table, commands?: table }
+---@param opts { size?: { horizontal?: integer, vertical?: integer }, keymaps?: table, commands?: table, debug?: boolean }
 function M.setup(opts)
   config = vim.tbl_deep_extend('force', config, opts or {})
+
+  -- 防止 toggleterm 侧残留配置干扰（persist_size 默认 true，显式关掉）
+  pcall(function()
+    require('toggleterm').setup({ persist_size = false })
+  end)
 
   -- 注册键位
   local km = config.keymaps
@@ -67,44 +80,109 @@ function M.setup(opts)
       vim.keymap.set(mode, lhs, fn, { noremap = true })
     end
   end
-  if km.shell    then safe_map(km.shell[1],    km.shell[2],    M.shell) end
-  if km.shell_i  then safe_map(km.shell_i[1],  km.shell_i[2],  M.shell) end
-  if km.reasonix then safe_map(km.reasonix[1], km.reasonix[2], function()
-    local cmd = config.commands.reasonix
-    M.open(type(cmd) == 'function' and cmd() or cmd)
-  end) end
-  if km.lazygit  then safe_map(km.lazygit[1],  km.lazygit[2],  function()
-    local cmd = config.commands.lazygit
-    M.open(type(cmd) == 'function' and cmd() or cmd)
-  end) end
+  if km.shell then
+    safe_map(km.shell[1], km.shell[2], M.shell)
+  end
+  if km.shell_i then
+    safe_map(km.shell_i[1], km.shell_i[2], M.shell)
+  end
+  if km.reasonix then
+    safe_map(km.reasonix[1], km.reasonix[2], function()
+      local cmd = config.commands.reasonix
+      M.open(type(cmd) == 'function' and cmd() or cmd)
+    end)
+  end
+  if km.lazygit then
+    safe_map(km.lazygit[1], km.lazygit[2], function()
+      local cmd = config.commands.lazygit
+      M.open(type(cmd) == 'function' and cmd() or cmd)
+    end)
+  end
 end
 
+--- 打开/关闭持久终端
+---@param cmd string? 要执行的命令，nil 表示普通 shell
 function M.open(cmd)
-  local direction, size = get_layout()
   local name = cmd or '__shell__'
-  local opts = {
-    direction = direction,
-    size = size,
-    cmd = cmd,
-    persist_size = false,  -- 不记忆旧尺寸，每次 toggle 使用最新值
-    hidden = true,         -- 隐藏时进程继续跑，toggle() 只切显隐
-  }
+  local term = terms[name]
 
-  if not terms[name] then
-    local cmd_saved = cmd
-    terms[name] = require('toggleterm.terminal').Terminal:new(vim.tbl_extend('force', opts, {
-      on_open = function(term)
-        vim.keymap.set('t', '<C-\\><C-\\>', function()
-          M.open(cmd_saved)
-        end, { buffer = term.bufnr, noremap = true })
-      end,
-    }))
+  -- 已打开 → 关闭窗口（隐藏），终端进程继续
+  if term and term.winid and vim.api.nvim_win_is_valid(term.winid) then
+    if config.debug then
+      vim.notify('QQdock: hide [' .. name .. ']', vim.log.levels.INFO)
+    end
+    vim.api.nvim_win_close(term.winid, true)
+    term.winid = nil
+    return
   end
 
-  -- 每次 toggle 传入最新方向/尺寸，确保分屏后重新计算
-  terms[name]:toggle(size, direction)
+  -- 需要打开 → 基于当前窗口计算布局
+  local direction, size = get_layout()
+  if config.debug then
+    local width = vim.api.nvim_win_get_width(0)
+    local height = vim.api.nvim_win_get_height(0)
+    vim.notify(
+      string.format('QQdock: %dx%d → %s %d [%s]', width, height, direction, size, name),
+      vim.log.levels.INFO
+    )
+  end
+
+  -- 基于当前窗口局部分屏（rightbelow，非 botright）
+  if direction == 'vertical' then
+    vim.cmd('rightbelow ' .. size .. 'vsplit')
+  else
+    vim.cmd('rightbelow ' .. size .. 'split')
+  end
+  local winid = vim.api.nvim_get_current_win()
+
+  -- 设置窗口固定尺寸，防止其他 split 操作挤压终端窗口
+  if direction == 'vertical' then
+    vim.wo[winid].winfixwidth = true
+  else
+    vim.wo[winid].winfixheight = true
+  end
+
+  -- 已有 buffer → 放入新窗口
+  if term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
+    vim.api.nvim_win_set_buf(winid, term.bufnr)
+    term.winid = winid
+    vim.cmd('startinsert')
+    return
+  end
+
+  -- 全新创建 terminal buffer
+  local bufnr = vim.api.nvim_create_buf(false, true) -- not listed, scratch
+  vim.api.nvim_win_set_buf(winid, bufnr)
+  vim.bo[bufnr].buflisted = false
+  vim.bo[bufnr].bufhidden = 'hide' -- 关闭窗口时保留 buffer，进程继续
+
+  -- 启动终端进程
+  local job_id = vim.fn.termopen(cmd or vim.o.shell, { detach = 1 })
+
+  -- 缓存实例
+  terms[name] = { bufnr = bufnr, winid = winid, job_id = job_id, cmd = cmd }
+
+  -- <C-\><C-\> 隐藏当前终端窗口
+  vim.keymap.set('t', '<C-\\><C-\\>', function()
+    M.open(cmd)
+  end, { buffer = bufnr, noremap = true })
+
+  -- 进程退出时清理缓存和 buffer
+  vim.api.nvim_create_autocmd('TermClose', {
+    buffer = bufnr,
+    once = true,
+    callback = function()
+      terms[name] = nil
+      if vim.api.nvim_buf_is_valid(bufnr) then
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+      end
+    end,
+  })
+
+  vim.cmd('startinsert')
 end
 
+--- 打开/关闭普通 shell（无自定义命令）
 function M.shell()
   M.open(nil)
 end
