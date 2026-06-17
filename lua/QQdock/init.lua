@@ -38,10 +38,12 @@ local config = {
 }
 
 ---@class QdockTerm
----@field bufnr  integer
----@field winid  integer?
----@field job_id integer
----@field cmd    string?
+---@field bufnr          integer
+---@field winid          integer?
+---@field job_id         integer
+---@field cmd            string?
+---@field borrowed       boolean?
+---@field original_bufnr integer?
 
 ---@type table<string, QdockTerm>
 local terms = {} -- 缓存终端实例，key 是命令名（nil = 普通 shell  → '__shell__'）
@@ -106,46 +108,70 @@ function M.open(cmd)
   local name = cmd or '__shell__'
   local term = terms[name]
 
-  -- 已打开 → 关闭窗口（隐藏），终端进程继续
+  -- 已打开 → 关闭/隐藏，终端进程继续
   if term and term.winid and vim.api.nvim_win_is_valid(term.winid) then
     if config.debug then
       vim.notify('QQdock: hide [' .. name .. ']', vim.log.levels.INFO)
     end
-    vim.api.nvim_win_close(term.winid, true)
+    if term.borrowed then
+      -- 占了主窗口 → 换回原始空 buffer
+      vim.api.nvim_win_set_buf(term.winid, term.original_bufnr)
+    else
+      vim.api.nvim_win_close(term.winid, true)
+    end
     term.winid = nil
+    term.borrowed = nil
     return
   end
 
   -- 需要打开 → 基于当前窗口计算布局
   local direction, size = get_layout()
+
+  -- 检测当前窗口是否是空 buffer（没打开文件时直接占主窗口）
+  local current_buf = vim.api.nvim_get_current_buf()
+  local use_main = vim.api.nvim_buf_get_name(current_buf) == ''
+    and vim.bo[current_buf].buftype == ''
+    and not vim.bo[current_buf].modified
+
   if config.debug then
     local width = vim.api.nvim_win_get_width(0)
     local height = vim.api.nvim_win_get_height(0)
+    local mode = use_main and 'main' or direction
     vim.notify(
-      string.format('QQdock: %dx%d → %s %d [%s]', width, height, direction, size, name),
+      string.format('QQdock: %dx%d → %s %d [%s]', width, height, mode, size, name),
       vim.log.levels.INFO
     )
   end
 
-  -- 基于当前窗口局部分屏（rightbelow，非 botright）
-  if direction == 'vertical' then
-    vim.cmd('rightbelow ' .. size .. 'vsplit')
+  local winid
+  if use_main then
+    -- 没打开文件 → 直接占用当前主窗口
+    winid = vim.api.nvim_get_current_win()
   else
-    vim.cmd('rightbelow ' .. size .. 'split')
-  end
-  local winid = vim.api.nvim_get_current_win()
+    -- 基于当前窗口局部分屏（rightbelow，非 botright）
+    if direction == 'vertical' then
+      vim.cmd('rightbelow ' .. size .. 'vsplit')
+    else
+      vim.cmd('rightbelow ' .. size .. 'split')
+    end
+    winid = vim.api.nvim_get_current_win()
 
-  -- 设置窗口固定尺寸，防止其他 split 操作挤压终端窗口
-  if direction == 'vertical' then
-    vim.wo[winid].winfixwidth = true
-  else
-    vim.wo[winid].winfixheight = true
+    -- 设置窗口固定尺寸，防止其他 split 操作挤压终端窗口
+    if direction == 'vertical' then
+      vim.wo[winid].winfixwidth = true
+    else
+      vim.wo[winid].winfixheight = true
+    end
   end
 
-  -- 已有 buffer → 放入新窗口
+  -- 已有 buffer → 放入窗口
   if term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
     vim.api.nvim_win_set_buf(winid, term.bufnr)
     term.winid = winid
+    if use_main then
+      term.borrowed = true
+      term.original_bufnr = current_buf
+    end
     vim.cmd('startinsert')
     return
   end
@@ -160,7 +186,12 @@ function M.open(cmd)
   local job_id = vim.fn.termopen(cmd or vim.o.shell, { detach = 1 })
 
   -- 缓存实例
-  terms[name] = { bufnr = bufnr, winid = winid, job_id = job_id, cmd = cmd }
+  local term_data = { bufnr = bufnr, winid = winid, job_id = job_id, cmd = cmd }
+  if use_main then
+    term_data.borrowed = true
+    term_data.original_bufnr = current_buf
+  end
+  terms[name] = term_data
 
   -- <C-\><C-\> 隐藏当前终端窗口
   vim.keymap.set('t', '<C-\\><C-\\>', function()
