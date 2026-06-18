@@ -184,7 +184,6 @@ function M.open(cmd)
       term.borrowed = true
       term.original_bufnr = current_buf
     end
-    vim.cmd('startinsert')
     return
   end
 
@@ -222,7 +221,6 @@ function M.open(cmd)
     end,
   })
 
-  vim.cmd('startinsert')
 end
 
 --- 打开/关闭普通 shell（无自定义命令）
